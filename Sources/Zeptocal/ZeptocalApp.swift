@@ -24,10 +24,8 @@ final class Clock: ObservableObject, @unchecked Sendable {
     }
 
     var barTitle: String {
-        let f = DateFormatter()
-        // e.g. "Wed 22" — weekday + day-of-month
-        f.setLocalizedDateFormatFromTemplate("EEE d")
-        return f.string(from: today)
+        // Four-digit year, to sit next to the system clock (e.g. "2026").
+        "\(Calendar.current.component(.year, from: today))"
     }
 
     private func scheduleMidnightTick() {

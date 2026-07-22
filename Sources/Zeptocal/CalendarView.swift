@@ -3,12 +3,15 @@ import SwiftUI
 struct CalendarView: View {
     @State private var visibleMonth = Date()       // any date within the shown month
     @State private var selected: Date? = nil        // day the user clicked
+    @State private var editingYear = false          // year field is open for typing
+    @State private var yearText = ""
+    @FocusState private var yearFieldFocused: Bool
     private let cal = Calendar.current
+    private let weekColor = Color.orange            // week-number accent
 
     var body: some View {
         VStack(spacing: 10) {
             header
-            selectionLine
             weekdayHeader
             grid
             footer
@@ -17,20 +20,54 @@ struct CalendarView: View {
         .frame(width: 260)
     }
 
-    // MARK: Header (month/year + navigation)
+    // MARK: Header (month + typable year + navigation)
 
     private var header: some View {
         HStack {
             navButton("chevron.left.2") { shiftYear(-1) }
             navButton("chevron.left") { shiftMonth(-1) }
             Spacer()
-            Text(monthTitle(visibleMonth))
-                .font(.headline)
-                .monospacedDigit()
+            HStack(spacing: 5) {
+                Text(monthName(visibleMonth))
+                    .font(.headline)
+                yearControl
+            }
             Spacer()
             navButton("chevron.right") { shiftMonth(1) }
             navButton("chevron.right.2") { shiftYear(1) }
         }
+    }
+
+    /// Click the year to type a new one; Return commits, Esc cancels.
+    private var yearControl: some View {
+        Group {
+            if editingYear {
+                TextField("", text: $yearText)
+                    .textFieldStyle(.plain)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 52)
+                    .focused($yearFieldFocused)
+                    .onAppear { yearFieldFocused = true }
+                    .onSubmit(commitYear)
+                    .onExitCommand { editingYear = false }
+            } else {
+                Button(yearString(visibleMonth)) {
+                    yearText = yearString(visibleMonth)
+                    editingYear = true
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .font(.headline.monospacedDigit())
+    }
+
+    private func commitYear() {
+        var comps = cal.dateComponents([.year, .month, .day], from: visibleMonth)
+        if let y = Int(yearText.trimmingCharacters(in: .whitespaces)) {
+            comps.year = y
+            if let d = cal.date(from: comps) { visibleMonth = d }
+        }
+        editingYear = false
     }
 
     private func navButton(_ symbol: String, _ action: @escaping () -> Void) -> some View {
@@ -40,29 +77,13 @@ struct CalendarView: View {
         .buttonStyle(.borderless)
     }
 
-    // MARK: Selected-day readout — "what day of the week was it"
-
-    private var selectionLine: some View {
-        Group {
-            if let selected {
-                Text(fullWeekday(selected))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                Text(fullWeekday(Date()))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    // MARK: Weekday column headers (with a spacer over the week-number column)
+    // MARK: Weekday column headers (with the week-number column label)
 
     private var weekdayHeader: some View {
         HStack(spacing: 2) {
             Text("wk")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(weekColor.opacity(0.75))
                 .frame(width: 22)
             ForEach(orderedWeekdaySymbols, id: \.self) { s in
                 Text(s)
@@ -80,8 +101,8 @@ struct CalendarView: View {
             ForEach(weeks, id: \.self) { week in
                 HStack(spacing: 2) {
                     Text("\(weekNumber(for: week[0]))")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(weekColor)
                         .frame(width: 22)
                     ForEach(week, id: \.self) { day in
                         dayCell(day)
@@ -168,15 +189,13 @@ struct CalendarView: View {
         if let d = cal.date(byAdding: .year, value: n, to: visibleMonth) { visibleMonth = d }
     }
 
-    private func monthTitle(_ date: Date) -> String {
+    private func monthName(_ date: Date) -> String {
         let f = DateFormatter()
-        f.setLocalizedDateFormatFromTemplate("MMMM yyyy")
+        f.setLocalizedDateFormatFromTemplate("MMMM")
         return f.string(from: date)
     }
 
-    private func fullWeekday(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.setLocalizedDateFormatFromTemplate("EEEE, MMMM d, yyyy")
-        return f.string(from: date)
+    private func yearString(_ date: Date) -> String {
+        "\(cal.component(.year, from: date))"
     }
 }
