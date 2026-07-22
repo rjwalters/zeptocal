@@ -1,8 +1,9 @@
 import SwiftUI
 
 struct CalendarView: View {
+    @EnvironmentObject var store: MarkStore
     @State private var visibleMonth = Date()       // any date within the shown month
-    @State private var selected: Date? = nil        // day the user clicked
+    @State private var editingDay: Date? = nil      // day whose mark is being edited
     @State private var editingYear = false          // year field is open for typing
     @State private var yearText = ""
     @FocusState private var yearFieldFocused: Bool
@@ -10,6 +11,16 @@ struct CalendarView: View {
     private let weekColor = Color.orange            // week-number accent
 
     var body: some View {
+        Group {
+            if let editingDay {
+                MarkEditor(day: editingDay) { self.editingDay = nil }
+            } else {
+                calendar
+            }
+        }
+    }
+
+    private var calendar: some View {
         VStack(spacing: 10) {
             header
             weekdayHeader
@@ -115,27 +126,50 @@ struct CalendarView: View {
     private func dayCell(_ day: Date) -> some View {
         let inMonth = cal.isDate(day, equalTo: visibleMonth, toGranularity: .month)
         let isToday = cal.isDateInToday(day)
-        let isSelected = selected.map { cal.isDate($0, inSameDayAs: day) } ?? false
-        let fg: AnyShapeStyle = isToday ? AnyShapeStyle(.white)
-            : inMonth ? AnyShapeStyle(.primary)
-            : AnyShapeStyle(.tertiary)
+        let mark = store.mark(on: day, cal: cal)
+        let fg: AnyShapeStyle = {
+            if let mark, mark.filled { return AnyShapeStyle(.white) }
+            if isToday, mark == nil { return AnyShapeStyle(.white) }
+            return inMonth ? AnyShapeStyle(.primary) : AnyShapeStyle(.tertiary)
+        }()
         return Button {
-            selected = day
+            editingDay = day
         } label: {
             Text("\(cal.component(.day, from: day))")
                 .font(.callout)
                 .monospacedDigit()
                 .frame(maxWidth: .infinity, minHeight: 24)
-                .background {
-                    if isToday {
-                        Circle().fill(Color.accentColor)
-                    } else if isSelected {
-                        Circle().strokeBorder(Color.accentColor, lineWidth: 1.5)
-                    }
-                }
+                .background { markBackground(mark: mark, isToday: isToday).padding(1.5) }
                 .foregroundStyle(fg)
         }
         .buttonStyle(.plain)
+    }
+
+    /// Draws the day's mark (shape + fill/outline + color), plus a today ring on top.
+    @ViewBuilder
+    private func markBackground(mark: DateMark?, isToday: Bool) -> some View {
+        ZStack {
+            if let mark {
+                shapeView(mark.shape, filled: mark.filled, color: Color(hex: mark.colorHex))
+            } else if isToday {
+                Circle().fill(Color.accentColor)
+            }
+            if isToday, let mark {
+                shapeView(mark.shape, filled: false, color: .accentColor)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func shapeView(_ shape: MarkShape, filled: Bool, color: Color) -> some View {
+        switch shape {
+        case .circle:
+            if filled { Circle().fill(color) }
+            else { Circle().strokeBorder(color, lineWidth: 1.5) }
+        case .roundedRect:
+            if filled { RoundedRectangle(cornerRadius: 5).fill(color) }
+            else { RoundedRectangle(cornerRadius: 5).strokeBorder(color, lineWidth: 1.5) }
+        }
     }
 
     // MARK: Footer
@@ -144,7 +178,6 @@ struct CalendarView: View {
         HStack {
             Button("Today") {
                 visibleMonth = Date()
-                selected = nil
             }
             .font(.caption)
             Spacer()

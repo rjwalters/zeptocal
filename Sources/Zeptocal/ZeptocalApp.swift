@@ -3,10 +3,12 @@ import SwiftUI
 @main
 struct ZeptocalApp: App {
     @StateObject private var clock = Clock()
+    @StateObject private var store = MarkStore()
 
     var body: some Scene {
         MenuBarExtra {
             CalendarView()
+                .environmentObject(store)
         } label: {
             Text(clock.barTitle)
         }
