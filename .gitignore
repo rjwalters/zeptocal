@@ -1,0 +1,4 @@
+.build/
+Zeptocal.app/
+*.xcodeproj
+.DS_Store

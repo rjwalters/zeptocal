@@ -1,0 +1,43 @@
+import SwiftUI
+
+@main
+struct ZeptocalApp: App {
+    @StateObject private var clock = Clock()
+
+    var body: some Scene {
+        MenuBarExtra {
+            CalendarView()
+        } label: {
+            Text(clock.barTitle)
+        }
+        .menuBarExtraStyle(.window)
+    }
+}
+
+/// Drives the menu bar title and rolls it over at midnight.
+final class Clock: ObservableObject, @unchecked Sendable {
+    @Published var today = Date()
+    private var timer: Timer?
+
+    init() {
+        scheduleMidnightTick()
+    }
+
+    var barTitle: String {
+        let f = DateFormatter()
+        // e.g. "Wed 22" — weekday + day-of-month
+        f.setLocalizedDateFormatFromTemplate("EEE d")
+        return f.string(from: today)
+    }
+
+    private func scheduleMidnightTick() {
+        let cal = Calendar.current
+        let nextMidnight = cal.nextDate(after: Date(),
+                                        matching: DateComponents(hour: 0, minute: 0, second: 1),
+                                        matchingPolicy: .nextTime) ?? Date().addingTimeInterval(3600)
+        timer = Timer(fire: nextMidnight, interval: 86_400, repeats: true) { [weak self] _ in
+            self?.today = Date()
+        }
+        if let timer { RunLoop.main.add(timer, forMode: .common) }
+    }
+}
