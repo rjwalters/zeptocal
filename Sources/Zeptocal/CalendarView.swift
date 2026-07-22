@@ -25,6 +25,13 @@ struct CalendarView: View {
             header
             weekdayHeader
             grid
+            if let countdownText {
+                Divider()
+                Text(countdownText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
             footer
         }
         .padding(12)
@@ -184,6 +191,19 @@ struct CalendarView: View {
             Button("Quit") { NSApplication.shared.terminate(nil) }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    /// "34 days until Mom's Birthday" for the soonest upcoming mark, if any.
+    private var countdownText: String? {
+        guard let (mark, date) = store.nextCountdown(cal: cal) else { return nil }
+        let today = cal.startOfDay(for: Date())
+        let days = cal.dateComponents([.day], from: today, to: date).day ?? 0
+        let name = mark.label.isEmpty ? "marked date" : mark.label
+        switch days {
+        case 0:  return "\(name) is today"
+        case 1:  return "1 day until \(name)"
+        default: return "\(days) days until \(name)"
         }
     }
 

@@ -62,6 +62,42 @@ final class MarkStore: ObservableObject {
         }
     }
 
+    /// The soonest mark occurring today or later, for the countdown line.
+    func nextCountdown(cal: Calendar) -> (mark: DateMark, date: Date)? {
+        let today = cal.startOfDay(for: Date())
+        var best: (DateMark, Date)?
+        for m in marks {
+            guard let d = nextOccurrence(of: m, onOrAfter: today, cal: cal) else { continue }
+            if best == nil || d < best!.1 { best = (m, d) }
+        }
+        return best
+    }
+
+    /// Next date on/after `startDay` on which `mark` lands, honoring its repeat rule.
+    private func nextOccurrence(of mark: DateMark, onOrAfter startDay: Date, cal: Calendar) -> Date? {
+        if mark.repeatRule == .none {
+            guard let d = cal.date(from: DateComponents(year: mark.year, month: mark.month, day: mark.day))
+            else { return nil }
+            let day = cal.startOfDay(for: d)
+            return day >= startDay ? day : nil
+        }
+        let anchorWeekday = mark.weekday(cal: cal)
+        var probe = startDay
+        for _ in 0..<800 {   // covers weekly/monthly/yearly with margin
+            let c = cal.dateComponents([.month, .day, .weekday], from: probe)
+            let hit: Bool
+            switch mark.repeatRule {
+            case .weekly:  hit = c.weekday == anchorWeekday
+            case .monthly: hit = c.day == mark.day
+            case .yearly:  hit = c.month == mark.month && c.day == mark.day
+            case .none:    hit = false
+            }
+            if hit { return probe }
+            probe = cal.date(byAdding: .day, value: 1, to: probe) ?? probe
+        }
+        return nil
+    }
+
     func upsert(_ mark: DateMark) {
         if let i = marks.firstIndex(where: { $0.id == mark.id }) { marks[i] = mark }
         else { marks.append(mark) }
