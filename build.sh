@@ -12,8 +12,9 @@ swift build -c "$CONFIG"
 
 echo "-> Assembling ${APP}..."
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Zeptocal"
+cp Assets/Zeptocal.icns "$APP/Contents/Resources/Zeptocal.icns"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -27,6 +28,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleExecutable</key><string>Zeptocal</string>
+    <key>CFBundleIconFile</key><string>Zeptocal</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
 </dict>
