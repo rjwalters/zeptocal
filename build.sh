@@ -57,19 +57,28 @@ if [ "$INSTALL" -eq 0 ]; then
 fi
 
 echo "-> Installing to ${DEST}..."
-if pkill -x Zeptocal 2>/dev/null; then
+# Stage the copy next to the destination first: this fails early (before the
+# running app is quit) if /Applications isn't writable, and makes the final
+# swap a quick rename.
+STAGE="${DEST}.installing"
+rm -rf "$STAGE"
+trap 'rm -rf "$STAGE"' EXIT
+cp -R "$APP" "$STAGE"
+
+ME="$(id -u)"
+if pkill -x -U "$ME" Zeptocal 2>/dev/null; then
     # pkill only signals; wait (up to ~5s) so `open` launches the new bundle
     # instead of re-activating the exiting instance.
     for _ in $(seq 50); do
-        pgrep -x Zeptocal >/dev/null || break
+        pgrep -x -U "$ME" Zeptocal >/dev/null || break
         sleep 0.1
     done
-    if pgrep -x Zeptocal >/dev/null; then
+    if pgrep -x -U "$ME" Zeptocal >/dev/null; then
         echo "Zeptocal did not quit; aborting install" >&2
         exit 1
     fi
 fi
 rm -rf "$DEST"
-cp -R "$APP" "$DEST"
+mv "$STAGE" "$DEST"
 open "$DEST"
 echo "Installed and relaunched ${DEST}"
