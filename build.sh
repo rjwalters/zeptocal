@@ -14,6 +14,7 @@ for arg in "$@"; do
         *) echo "usage: $0 [--install]" >&2; exit 2 ;;
     esac
 done
+
 BIN=".build/$CONFIG/Zeptocal"
 
 echo "-> Building (${CONFIG})..."
@@ -56,7 +57,18 @@ if [ "$INSTALL" -eq 0 ]; then
 fi
 
 echo "-> Installing to ${DEST}..."
-pkill -x Zeptocal 2>/dev/null || true
+if pkill -x Zeptocal 2>/dev/null; then
+    # pkill only signals; wait (up to ~5s) so `open` launches the new bundle
+    # instead of re-activating the exiting instance.
+    for _ in $(seq 50); do
+        pgrep -x Zeptocal >/dev/null || break
+        sleep 0.1
+    done
+    if pgrep -x Zeptocal >/dev/null; then
+        echo "Zeptocal did not quit; aborting install" >&2
+        exit 1
+    fi
+fi
 rm -rf "$DEST"
 cp -R "$APP" "$DEST"
 open "$DEST"
