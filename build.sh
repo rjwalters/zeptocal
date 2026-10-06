@@ -5,6 +5,16 @@ cd "$(dirname "$0")"
 
 CONFIG=release
 APP="Zeptocal.app"
+DEST="/Applications/$APP"
+
+INSTALL=0
+for arg in "$@"; do
+    case "$arg" in
+        --install) INSTALL=1 ;;
+        *) echo "usage: $0 [--install]" >&2; exit 2 ;;
+    esac
+done
+
 BIN=".build/$CONFIG/Zeptocal"
 
 echo "-> Building (${CONFIG})..."
@@ -39,4 +49,36 @@ PLIST
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
 
 echo "Built ${APP}"
-echo "  Run it with:  open ${APP}"
+
+if [ "$INSTALL" -eq 0 ]; then
+    echo "  Run it with:  open ${APP}"
+    echo "  Or install:   $0 --install"
+    exit 0
+fi
+
+echo "-> Installing to ${DEST}..."
+# Stage the copy next to the destination first: this fails early (before the
+# running app is quit) if /Applications isn't writable, and makes the final
+# swap a quick rename.
+STAGE="${DEST}.installing"
+rm -rf "$STAGE"
+trap 'rm -rf "$STAGE"' EXIT
+cp -R "$APP" "$STAGE"
+
+ME="$(id -u)"
+if pkill -x -U "$ME" Zeptocal 2>/dev/null; then
+    # pkill only signals; wait (up to ~5s) so `open` launches the new bundle
+    # instead of re-activating the exiting instance.
+    for _ in $(seq 50); do
+        pgrep -x -U "$ME" Zeptocal >/dev/null || break
+        sleep 0.1
+    done
+    if pgrep -x -U "$ME" Zeptocal >/dev/null; then
+        echo "Zeptocal did not quit; aborting install" >&2
+        exit 1
+    fi
+fi
+rm -rf "$DEST"
+mv "$STAGE" "$DEST"
+open "$DEST"
+echo "Installed and relaunched ${DEST}"
