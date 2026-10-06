@@ -5,6 +5,15 @@ cd "$(dirname "$0")"
 
 CONFIG=release
 APP="Zeptocal.app"
+DEST="/Applications/$APP"
+
+INSTALL=0
+for arg in "$@"; do
+    case "$arg" in
+        --install) INSTALL=1 ;;
+        *) echo "usage: $0 [--install]" >&2; exit 2 ;;
+    esac
+done
 BIN=".build/$CONFIG/Zeptocal"
 
 echo "-> Building (${CONFIG})..."
@@ -39,4 +48,16 @@ PLIST
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
 
 echo "Built ${APP}"
-echo "  Run it with:  open ${APP}"
+
+if [ "$INSTALL" -eq 0 ]; then
+    echo "  Run it with:  open ${APP}"
+    echo "  Or install:   $0 --install"
+    exit 0
+fi
+
+echo "-> Installing to ${DEST}..."
+pkill -x Zeptocal 2>/dev/null || true
+rm -rf "$DEST"
+cp -R "$APP" "$DEST"
+open "$DEST"
+echo "Installed and relaunched ${DEST}"

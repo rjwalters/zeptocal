@@ -17,6 +17,12 @@ Pure `Calendar` date math via SwiftUI `MenuBarExtra`. One binary, no dependencie
 open Zeptocal.app
 ```
 
+To install into `/Applications` (quitting and relaunching any running copy):
+
+```sh
+./build.sh --install
+```
+
 Requires macOS 14+ and a Swift 6 toolchain (Xcode Command Line Tools is enough).
 
 To launch at login: System Settings → General → Login Items → add `Zeptocal.app`.
